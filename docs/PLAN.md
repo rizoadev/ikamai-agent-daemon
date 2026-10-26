@@ -101,21 +101,21 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 
 | # | Task | Estimate | Depends On |
 |---|------|----------|------------|
-| 3.1 | REST API server (Axum) | 8h | 1.1 |
-| 3.2 | Agent API endpoints | 6h | 3.1, 1.5 |
-| 3.3 | Task API endpoints | 6h | 3.1, 2.4 |
-| 3.4 | Schedule API endpoints | 4h | 3.1, 2.10 |
-| 3.5 | Event API endpoints | 4h | 3.1, 2.8 |
-| 3.6 | System API endpoints (health, status, reload) | 4h | 3.1 |
-| 3.7 | API authentication (bearer token) | 4h | 3.1 |
-| 3.8 | WebSocket server (real-time events) | 8h | 3.1, 2.8 |
-| 3.9 | Prometheus metrics endpoint | 6h | 3.1 |
-| 3.10 | Alert webhooks (agent failure, task failure) | 4h | 1.8 |
-| 3.11 | Hot-reload configuration | 4h | 1.2 |
-| 3.12 | API documentation (OpenAPI spec) | 4h | 3.2-3.6 |
-| 3.13 | Node.js SDK (basic) | 6h | 2.2 |
-| 3.14 | Tests for Phase 3 | 8h | all |
-| 3.15 | Load testing (k6) | 4h | 3.1 |
+| 3.1 | REST API server (Axum) | 8h | ✅ |
+| 3.2 | Agent API endpoints | 6h | ✅ |
+| 3.3 | Task API endpoints | 6h | ✅ |
+| 3.4 | Schedule API endpoints | 4h | ✅ |
+| 3.5 | Event API endpoints | 4h | ✅ |
+| 3.6 | System API endpoints (health, status, reload) | 4h | ✅ |
+| 3.7 | API authentication (bearer token) | 4h | ✅ |
+| 3.8 | WebSocket server (real-time events) | 8h | ✅ |
+| 3.9 | Prometheus metrics endpoint | 6h | ✅ |
+| 3.10 | Alert webhooks (agent failure, task failure) | 4h | ✅ |
+| 3.11 | Hot-reload configuration | 4h | ✅ |
+| 3.12 | API documentation (OpenAPI spec) | 4h | ✅ |
+| 3.13 | Node.js SDK (basic) | 6h | ✅ |
+| 3.14 | Tests for Phase 3 | 8h | ✅ |
+| 3.15 | Load testing (k6) | 4h | ✅ |
 
 **Deliverable:** Full REST API, WebSocket, metrics. → **v0.3.0-beta.1**
 
@@ -125,15 +125,15 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 
 | # | Task | Estimate | Depends On |
 |---|------|----------|------------|
-| 4.1 | gRPC server (tonic) | 8h | 1.1 |
-| 4.2 | gRPC proto definitions | 4h | 4.1 |
-| 4.3 | Inter-daemon communication (gRPC) | 8h | 4.1, 4.2 |
+| 4.1 | gRPC server (tonic) | 8h | ✅ |
+| 4.2 | gRPC proto definitions | 4h | ✅ |
+| 4.3 | Inter-daemon communication (gRPC) | 8h | ✅ |
 | 4.4 | Node discovery + registration | 6h | 4.3 |
 | 4.5 | Cross-node task routing | 8h | 4.4, 2.5 |
 | 4.6 | Cross-node event propagation | 6h | 4.4, 2.8 |
 | 4.7 | PostgreSQL storage backend | 8h | 1.3 |
-| 4.8 | WASM plugin runtime (wasmtime) | 12h | 1.7 |
-| 4.9 | WASM agent sandboxing | 8h | 4.8 |
+| 4.8 | WASM plugin runtime (wasmtime) | 12h | ✅ |
+| 4.9 | WASM agent sandboxing | 8h | ✅ |
 | 4.10 | mTLS for gRPC | 4h | 4.1 |
 | 4.11 | RBAC for API | 6h | 3.7 |
 | 4.12 | Secret management (encrypted vault) | 6h | 1.2 |

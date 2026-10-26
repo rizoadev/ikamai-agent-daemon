@@ -19,3 +19,5 @@ thiserror.workspace = true
 ulid.workspace = true
 chrono.workspace = true
 cron.workspace = true
+rusqlite.workspace = true
+libc.workspace = true

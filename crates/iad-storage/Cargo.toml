@@ -11,6 +11,9 @@ description = "IKAMAI Agent Daemon — storage layer"
 [dependencies]
 iad-core = { path = "../iad-core" }
 rusqlite.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
+chrono.workspace = true
+ulid.workspace = true

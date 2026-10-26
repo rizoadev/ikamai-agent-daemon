@@ -172,6 +172,92 @@ pub struct Event {
 
 // ─── Agent Incident ──────────────────────────────────────────────────────────
 
+// ─── Monitor Snapshot ────────────────────────────────────────────────────────
+
+/// Real-time agent monitoring state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentMonitorState {
+    pub agent_name:    String,
+    pub status:        AgentStatus,
+    pub current_task:  Option<String>,
+    pub phase:         AgentPhase,
+    pub thinking:      Option<ThinkingState>,
+    pub tool_call:     Option<ToolCallState>,
+    pub text_buffer:   String,
+    pub tasks_done:    u64,
+    pub tasks_failed:  u64,
+    pub uptime_secs:   u64,
+    pub cpu_pct:       f32,
+    pub mem_bytes:     u64,
+    pub last_activity: DateTime<Utc>,
+}
+
+/// What phase an agent is in right now.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentPhase {
+    Idle,
+    Thinking,
+    ToolExecution,
+    Writing,
+    Completed,
+}
+
+impl Default for AgentPhase {
+    fn default() -> Self { Self::Idle }
+}
+
+impl std::fmt::Display for AgentPhase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Idle          => "idle",
+            Self::Thinking      => "thinking",
+            Self::ToolExecution => "tool_execution",
+            Self::Writing       => "writing",
+            Self::Completed     => "completed",
+        };
+        write!(f, "{s}")
+    }
+}
+
+/// Snapshot of current thinking block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThinkingState {
+    pub content_index: u32,
+    pub text:          String,
+    pub started_at:    DateTime<Utc>,
+    pub duration_ms:   Option<u64>,
+    pub is_streaming:  bool,
+}
+
+/// Snapshot of current tool call.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCallState {
+    pub tool_call_id: String,
+    pub tool_name:    String,
+    pub args:         serde_json::Value,
+    pub output:       String,
+    pub started_at:   DateTime<Utc>,
+    pub duration_ms:  Option<u64>,
+    pub success:      Option<bool>,
+    pub is_running:   bool,
+}
+
+/// Dashboard summary for all agents.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DashboardSnapshot {
+    pub agents:          Vec<AgentMonitorState>,
+    pub total_agents:    usize,
+    pub agents_running:  usize,
+    pub agents_idle:     usize,
+    pub agents_thinking: usize,
+    pub agents_executing: usize,
+    pub total_tasks_done: u64,
+    pub total_tasks_failed: u64,
+    pub uptime_secs:     u64,
+    pub snapshot_at:     DateTime<Utc>,
+}
+
 /// Crash / incident record (flight recorder).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentIncident {

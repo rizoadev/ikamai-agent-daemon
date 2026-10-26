@@ -18,10 +18,12 @@ pub use error::{Error, Result};
 pub use models::{
     Agent, AgentIncident, AgentManifest, AgentStatus, RestartPolicy,
     Event, Priority, Task, TaskStatus,
+    AgentMonitorState, AgentPhase, DashboardSnapshot, ThinkingState, ToolCallState,
 };
 pub use registry::AgentRegistry;
 pub mod cross_node;
 pub mod node_discovery;
+pub mod monitor;
 
 // Test modules (only compiled in test builds)
 #[cfg(test)]

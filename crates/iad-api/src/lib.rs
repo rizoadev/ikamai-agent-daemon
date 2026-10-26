@@ -2,6 +2,7 @@
 
 pub mod alerts;
 pub mod metrics;
+pub mod monitor;
 pub mod ws;
 
 use axum::{
@@ -36,6 +37,7 @@ pub struct AppState {
     pub event_bus:     Arc<EventBus>,
     pub alert_mgr:     Option<Arc<AlertManager>>,
     pub conn_registry: Option<ConnectionRegistry>,
+    pub monitor:       Option<Arc<iad_core::monitor::Monitor>>,
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -64,6 +66,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/teams",                         get(list_teams))
         .route("/api/v1/teams/:team/mention",           post(mention_team))
         .route("/api/v1/teams/:team/connected",         get(team_connected))
+        // Monitor (real-time)
+        .nest("/api/v1/monitor", monitor::monitor_router())
         .with_state(state)
 }
 

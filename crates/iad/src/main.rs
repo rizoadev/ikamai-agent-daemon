@@ -6,10 +6,16 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use iad_core::{
     config::{DaemonConfig, DEFAULT_CONFIG_TOML},
+    event_bus::EventBus,
     pid::{acquire_pid_file, pid_alive, read_pid, remove_pid_file},
     process::{ProcessEvent, ProcessManager},
     registry::AgentRegistry,
     AgentManifest, AgentStatus,
+};
+use iad_api::{
+    AppState,
+    alerts::AlertManager,
+    metrics::Metrics,
 };
 use iad_storage::Storage;
 use std::{path::PathBuf, sync::Arc};
@@ -195,6 +201,35 @@ async fn cmd_start(cfg: &DaemonConfig, foreground: bool) -> anyhow::Result<()> {
         cfg.clone(),
     ));
     tokio::spawn(health.run());
+
+    // REST API server (Phase 3).
+    if cfg.api.rest_enabled {
+        let api_bind = expand_tilde(&cfg.api.rest_bind);
+        let api_addr: std::net::SocketAddr = api_bind.parse()
+            .unwrap_or_else(|_| "127.0.0.1:7700".parse().unwrap());
+
+        let api_token = std::env::var("IAD_API_TOKEN").ok()
+            .or_else(|| std::env::var("IAD_TOKEN").ok());
+
+        let app_state = AppState {
+            storage:   storage.clone(),
+            registry:  registry.clone(),
+            cfg:       cfg.clone(),
+            api_token,
+            metrics:   Metrics::new(),
+            event_bus: EventBus::new(),
+            alert_mgr: None,
+        };
+
+        let router = iad_api::build_router(app_state);
+        info!(addr = %api_addr, "REST API server starting");
+        tokio::spawn(async move {
+            let listener = tokio::net::TcpListener::bind(api_addr).await
+                .expect("failed to bind API port");
+            axum::serve(listener, router).await
+                .expect("REST API server error");
+        });
+    }
 
     // Signal handler.
     let pid_path_sig = pid_path.clone();

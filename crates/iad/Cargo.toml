@@ -25,3 +25,4 @@ serde_yaml.workspace = true
 chrono.workspace = true
 ulid.workspace = true
 libc.workspace = true
+axum        = { version = "0.7", features = ["ws"] }

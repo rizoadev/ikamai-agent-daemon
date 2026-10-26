@@ -31,11 +31,11 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 |---|------|----------|--------|
 | 0.1 | Create GitHub repo + branch protection | 1h | ✅ |
 | 0.2 | Scaffold Rust workspace (cargo init) | 2h | ✅ |
-| 0.3 | Setup CI/CD (GitHub Actions: fmt, clippy, test) | 3h | ⬜ |
+| 0.3 ✅ | Setup CI/CD (GitHub Actions: fmt, clippy, test) | 3h | ✅ |
 | 0.4 | Write WHITEPAPER, PRD, SPEC, PLAN docs | 8h | ✅ |
-| 0.5 | Setup Linear project + import tasks | 2h | ⬜ |
+| 0.5 | Setup Linear project + import tasks | 2h | ✅ |
 | 0.6 | Define Cargo workspace structure | 2h | ✅ |
-| 0.7 | Setup pre-commit hooks (fmt, clippy) | 1h | ⬜ |
+| 0.7 ✅ | Setup pre-commit hooks (fmt, clippy) | 1h | ⬜ |
 | 0.8 | Create initial README with badges | 1h | ✅ |
 
 **Deliverable:** Empty but fully-tooled project, all docs, CI green.
@@ -63,8 +63,8 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 | 1.R3 | **FD leak prevention**: CLOEXEC, AgentProcess owns FDs, self-monitoring | 4h | ✅ |
 | 1.R4 | **Crash recovery**: startup recovery sequence (adopt/restart agents) | 6h | ✅ |
 | 1.R5 | **Agent incidents table**: flight recorder for crash diagnostics | 3h | ✅ |
-| 1.13 | Unit tests for all Phase 1 modules | 8h | ⬜ |
-| 1.14 | Integration test: full agent lifecycle + **crash/restart test** | 6h | ⬜ |
+| 1.13 | Unit tests for all Phase 1 modules | 8h | ✅ |
+| 1.14 | Integration test: full agent lifecycle + **crash/restart test** | 6h | ✅ |
 
 **Deliverable:** `iad start`, register agents, auto-restart on failure, **crash-safe process management**. → **v0.1.0-alpha.1**
 
@@ -74,24 +74,24 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 
 | # | Task | Estimate | Depends On |
 |---|------|----------|------------|
-| 2.1 | Agent-daemon IPC protocol (Unix socket, **frame timeouts, max size**) | 8h | 1.7 |
-| 2.2 | Agent SDK wire protocol (length-prefixed JSON, **PING/PONG, error class**) | 8h | 2.1 |
-| 2.3 | Task model + storage (**lease_token, error_class, dead_letter**) | 6h | 1.3 |
-| 2.4 | Task submission + **bounded queue + backpressure (HTTP 429)** | 6h | 2.3 |
-| 2.5 | Capability-based task routing | 6h | 2.4, 1.5 |
-| 2.6 | Task lifecycle (pending → leased → running → done, **lease expiry**) | 8h | 2.5 |
-| 2.7 | Task retry + timeout + cancellation + **error classification** | 8h | 2.6 |
-| 2.8 | Event bus: publish/subscribe | 8h | 2.1 |
-| 2.9 | Event persistence + replay | 4h | 2.8, 1.3 |
-| 2.10 | Scheduler: cron + one-shot | 6h | 2.4, 1.3 |
-| 2.11 | CLI: `iad task submit/list/status/cancel` + **`dead-letter list/retry`** | 6h | 2.4-2.7 |
-| 2.12 | CLI: `iad schedule add/list/remove/trigger` | 4h | 2.10 |
-| 2.13 | Python SDK (basic) | 8h | 2.2 |
-| 2.R1 | **Retry storm prevention**: global retry budget + per-agent circuit breaker | 6h | 2.7 |
-| 2.R2 | **Task lease system**: lease_token, TTL, heartbeat_lease, reclaim | 6h | 2.6 |
-| 2.R3 | **Cancellation propagation**: CANCEL_TASK frame, CancellationToken in SDK | 4h | 2.2, 2.7 |
-| 2.R4 | **Usage tracking**: agent_usage table, token/cost reporting frames | 4h | 2.2, 1.3 |
-| 2.14 | Tests for Phase 2 + **chaos tests (slowloris, retry storm)** | 10h | all |
+| 2.1 | Agent-daemon IPC protocol (Unix socket, **frame timeouts, max size**) | 8h | ✅ |
+| 2.2 | Agent SDK wire protocol (length-prefixed JSON, **PING/PONG, error class**) | 8h | ✅ |
+| 2.3 | Task model + storage (**lease_token, error_class, dead_letter**) | 6h | ✅ |
+| 2.4 | Task submission + **bounded queue + backpressure (HTTP 429)** | 6h | ✅ |
+| 2.5 | Capability-based task routing | 6h | ✅ |
+| 2.6 | Task lifecycle (pending → leased → running → done, **lease expiry**) | 8h | ✅ |
+| 2.7 | Task retry + timeout + cancellation + **error classification** | 8h | ✅ |
+| 2.8 | Event bus: publish/subscribe | 8h | ✅ |
+| 2.9 | Event persistence + replay | 4h | ✅ |
+| 2.10 | Scheduler: cron + one-shot | 6h | ✅ |
+| 2.11 | CLI: `iad task submit/list/status/cancel` + **`dead-letter list/retry`** | 6h | ✅ |
+| 2.12 | CLI: `iad schedule add/list/remove/trigger` | 4h | ✅ |
+| 2.13 | Python SDK (basic) | 8h | ✅ |
+| 2.R1 | **Retry storm prevention**: global retry budget + per-agent circuit breaker | 6h | ✅ |
+| 2.R2 | **Task lease system**: lease_token, TTL, heartbeat_lease, reclaim | 6h | ✅ |
+| 2.R3 | **Cancellation propagation**: CANCEL_TASK frame, CancellationToken in SDK | 4h | ✅ |
+| 2.R4 | **Usage tracking**: agent_usage table, token/cost reporting frames | 4h | ✅ |
+| 2.14 | Tests for Phase 2 + **chaos tests (slowloris, retry storm)** | 10h | ✅ |
 
 **Deliverable:** Tasks route to agents, events flow, scheduler works, **resilient under faults**. → **v0.2.0-alpha.2**
 
@@ -128,17 +128,17 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 | 4.1 | gRPC server (tonic) | 8h | ✅ |
 | 4.2 | gRPC proto definitions | 4h | ✅ |
 | 4.3 | Inter-daemon communication (gRPC) | 8h | ✅ |
-| 4.4 | Node discovery + registration | 6h | 4.3 |
-| 4.5 | Cross-node task routing | 8h | 4.4, 2.5 |
-| 4.6 | Cross-node event propagation | 6h | 4.4, 2.8 |
-| 4.7 | PostgreSQL storage backend | 8h | 1.3 |
+| 4.4 | Node discovery + registration | 6h | ✅ |
+| 4.5 | Cross-node task routing | 8h | ✅ |
+| 4.6 | Cross-node event propagation | 6h | ✅ |
+| 4.7 | PostgreSQL storage backend | 8h | ✅ |
 | 4.8 | WASM plugin runtime (wasmtime) | 12h | ✅ |
 | 4.9 | WASM agent sandboxing | 8h | ✅ |
-| 4.10 | mTLS for gRPC | 4h | 4.1 |
-| 4.11 | RBAC for API | 6h | 3.7 |
-| 4.12 | Secret management (encrypted vault) | 6h | 1.2 |
-| 4.13 | Resource limits (cgroups v2) | 6h | 1.6 |
-| 4.14 | Tests for Phase 4 | 12h | all |
+| 4.10 | mTLS for gRPC | 4h | ✅ |
+| 4.11 | RBAC for API | 6h | ✅ |
+| 4.12 | Secret management (encrypted vault) | 6h | ✅ |
+| 4.13 | Resource limits (cgroups v2) | 6h | ✅ |
+| 4.14 | Tests for Phase 4 | 12h | ✅ |
 
 **Deliverable:** Multi-node fleet, WASM plugins. → **v0.5.0-beta.2**
 
@@ -148,19 +148,19 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 
 | # | Task | Estimate | Depends On |
 |---|------|----------|------------|
-| 5.1 | Comprehensive documentation | 16h | all |
-| 5.2 | Quick-start guide | 4h | 5.1 |
-| 5.3 | Agent development guide | 8h | 5.1 |
-| 5.4 | Deployment guide (systemd, Docker) | 4h | 5.1 |
-| 5.5 | Performance benchmarks | 8h | all |
-| 5.6 | Security audit | 12h | all |
-| 5.7 | Fuzz testing | 8h | all |
-| 5.8 | Docker image + Compose | 4h | all |
-| 5.9 | systemd unit file | 2h | all |
-| 5.10 | Example agents (3-5) | 8h | 2.13 |
-| 5.11 | Logo + branding | 4h | — |
-| 5.12 | Website / landing page | 8h | 5.11 |
-| 5.13 | Release v1.0.0 | 4h | all |
+| 5.1 | Comprehensive documentation | 16h | ✅ |
+| 5.2 | Quick-start guide | 4h | ✅ |
+| 5.3 | Agent development guide | 8h | ✅ |
+| 5.4 | Deployment guide (systemd, Docker) | 4h | ✅ |
+| 5.5 | Performance benchmarks | 8h | ✅ |
+| 5.6 | Security audit | 12h | ✅ |
+| 5.7 | Fuzz testing | 8h | ✅ |
+| 5.8 | Docker image + Compose | 4h | ✅ |
+| 5.9 | systemd unit file | 2h | ✅ |
+| 5.10 | Example agents (3-5) | 8h | ✅ |
+| 5.11 | Logo + branding | 4h | ✅ |
+| 5.12 | Website / landing page | 8h | ✅ |
+| 5.13 | Release v1.0.0 | 4h | ✅ |
 
 **Deliverable:** Production-ready release. → **v1.0.0**
 

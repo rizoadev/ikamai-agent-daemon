@@ -23,7 +23,10 @@ impl Storage {
     pub fn open(path: &Path) -> Result<Self> {
         // Create parent directories if needed.
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+            // ":memory:" has no parent to create
+            if parent != Path::new("") {
+                std::fs::create_dir_all(parent)?;
+            }
         }
 
         let conn = Connection::open(path)
@@ -171,14 +174,14 @@ impl Storage {
         let rows: std::result::Result<Vec<_>, _> = stmt
             .query_map(params![agent_name], |row| {
                 Ok(AgentIncident {
-                    id:           row.get(0)?,
-                    agent_id:     row.get(1)?,
-                    agent_name:   row.get(2)?,
+                    id:            row.get(0)?,
+                    agent_id:      row.get(1)?,
+                    agent_name:    row.get(2)?,
                     generation_id: row.get::<_, i64>(3)? as u64,
-                    exit_code:    row.get(4)?,
-                    signal:       row.get(5)?,
-                    reason:       row.get(6)?,
-                    occurred_at:  parse_dt(row.get::<_, String>(7)?),
+                    exit_code:     row.get(4)?,
+                    signal:        row.get(5)?,
+                    reason:        row.get(6)?,
+                    occurred_at:   parse_dt(row.get::<_, String>(7)?),
                 })
             })
             .map_err(|e| Error::Storage(e.to_string()))?
@@ -207,14 +210,14 @@ fn row_to_agent(row: &rusqlite::Row<'_>) -> rusqlite::Result<Agent> {
 
     let manifest: AgentManifest = serde_json::from_str(&manifest_str)
         .unwrap_or_else(|_| AgentManifest {
-            name: "unknown".into(),
-            version: "0.0.0".into(),
-            runtime: "unknown".into(),
-            entrypoint: "".into(),
-            args: vec![],
+            name:         "unknown".into(),
+            version:      "0.0.0".into(),
+            runtime:      "unknown".into(),
+            entrypoint:   "".into(),
+            args:         vec![],
             capabilities: vec![],
-            env: Default::default(),
-            restart: RestartPolicy::default(),
+            env:          Default::default(),
+            restart:      RestartPolicy::default(),
             max_restarts: 5,
         });
 
@@ -300,3 +303,7 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_events_topic ON events(topic, sequence);
 "#;
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod tests;

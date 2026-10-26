@@ -29,14 +29,14 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 
 | # | Task | Estimate | Status |
 |---|------|----------|--------|
-| 0.1 | Create GitHub repo + branch protection | 1h | ⬜ |
-| 0.2 | Scaffold Rust workspace (cargo init) | 2h | ⬜ |
+| 0.1 | Create GitHub repo + branch protection | 1h | ✅ |
+| 0.2 | Scaffold Rust workspace (cargo init) | 2h | ✅ |
 | 0.3 | Setup CI/CD (GitHub Actions: fmt, clippy, test) | 3h | ⬜ |
 | 0.4 | Write WHITEPAPER, PRD, SPEC, PLAN docs | 8h | ✅ |
 | 0.5 | Setup Linear project + import tasks | 2h | ⬜ |
-| 0.6 | Define Cargo workspace structure | 2h | ⬜ |
+| 0.6 | Define Cargo workspace structure | 2h | ✅ |
 | 0.7 | Setup pre-commit hooks (fmt, clippy) | 1h | ⬜ |
-| 0.8 | Create initial README with badges | 1h | ⬜ |
+| 0.8 | Create initial README with badges | 1h | ✅ |
 
 **Deliverable:** Empty but fully-tooled project, all docs, CI green.
 
@@ -46,25 +46,25 @@ Phase 6: Ecosystem          [Month 9+]     ██████████+
 
 | # | Task | Estimate | Depends On |
 |---|------|----------|------------|
-| 1.1 | Daemon process (daemonize, PID file **with flock**, signal handling) | 8h | 0.6 |
-| 1.2 | Configuration loading (TOML parser + env vars) | 4h | 0.6 |
-| 1.3 | SQLite storage layer (migrations, connection pool, **WAL + integrity check**) | 6h | 0.6 |
-| 1.4 | Agent manifest parser (YAML → struct) | 4h | 1.2 |
-| 1.5 | Agent registry (register, deregister, list, **generation_id**) | 6h | 1.3, 1.4 |
-| 1.6 | Process manager (spawn, kill, signal, **process group, PR_SET_PDEATHSIG**) | 10h | 1.1 |
-| 1.7 | Agent lifecycle (start → running → stop, **crashed state**) | 8h | 1.5, 1.6 |
-| 1.8 | Health monitor (heartbeat, failure detection) | 6h | 1.7 |
-| 1.9 | Auto-restart with **exponential backoff + jitter + staggered restart** | 6h | 1.8 |
-| 1.10 | Structured logging (tracing crate, **fault event logging**) | 4h | 1.1 |
-| 1.11 | CLI: `iad init/start/stop/status` | 6h | 1.1, 1.2 |
-| 1.12 | CLI: `iad agent add/remove/list/start/stop/logs` | 8h | 1.5, 1.7 |
-| 1.R1 | **Zombie reaping**: SIGCHLD handler + waitpid loop | 4h | 1.6 |
-| 1.R2 | **Orphan cleanup**: process group kill (-pgid), PR_SET_PDEATHSIG | 3h | 1.6 |
-| 1.R3 | **FD leak prevention**: CLOEXEC, AgentProcess owns FDs, self-monitoring | 4h | 1.6 |
-| 1.R4 | **Crash recovery**: startup recovery sequence (adopt/restart agents) | 6h | 1.7 |
-| 1.R5 | **Agent incidents table**: flight recorder for crash diagnostics | 3h | 1.3 |
-| 1.13 | Unit tests for all Phase 1 modules | 8h | 1.1-1.R5 |
-| 1.14 | Integration test: full agent lifecycle + **crash/restart test** | 6h | 1.13 |
+| 1.1 | Daemon process (daemonize, PID file **with flock**, signal handling) | 8h | ✅ |
+| 1.2 | Configuration loading (TOML parser + env vars) | 4h | ✅ |
+| 1.3 | SQLite storage layer (migrations, connection pool, **WAL + integrity check**) | 6h | ✅ |
+| 1.4 | Agent manifest parser (YAML → struct) | 4h | ✅ |
+| 1.5 | Agent registry (register, deregister, list, **generation_id**) | 6h | ✅ |
+| 1.6 | Process manager (spawn, kill, signal, **process group, PR_SET_PDEATHSIG**) | 10h | ✅ |
+| 1.7 | Agent lifecycle (start → running → stop, **crashed state**) | 8h | ✅ |
+| 1.8 | Health monitor (heartbeat, failure detection) | 6h | ✅ |
+| 1.9 | Auto-restart with **exponential backoff + jitter + staggered restart** | 6h | ✅ |
+| 1.10 | Structured logging (tracing crate, **fault event logging**) | 4h | ✅ |
+| 1.11 | CLI: `iad init/start/stop/status` | 6h | ✅ |
+| 1.12 | CLI: `iad agent add/remove/list/start/stop/logs` | 8h | ✅ |
+| 1.R1 | **Zombie reaping**: SIGCHLD handler + waitpid loop | 4h | ✅ |
+| 1.R2 | **Orphan cleanup**: process group kill (-pgid), PR_SET_PDEATHSIG | 3h | ✅ |
+| 1.R3 | **FD leak prevention**: CLOEXEC, AgentProcess owns FDs, self-monitoring | 4h | ✅ |
+| 1.R4 | **Crash recovery**: startup recovery sequence (adopt/restart agents) | 6h | ✅ |
+| 1.R5 | **Agent incidents table**: flight recorder for crash diagnostics | 3h | ✅ |
+| 1.13 | Unit tests for all Phase 1 modules | 8h | ⬜ |
+| 1.14 | Integration test: full agent lifecycle + **crash/restart test** | 6h | ⬜ |
 
 **Deliverable:** `iad start`, register agents, auto-restart on failure, **crash-safe process management**. → **v0.1.0-alpha.1**
 

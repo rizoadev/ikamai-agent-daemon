@@ -2,9 +2,10 @@
 
 **Product:** IKAMAI Agent Daemon (IAD)  
 **Version:** 0.1.0  
-**Date:** 2026-10-26  
+**Date:** 2026-10-27  
 **Author:** Rizoa  
-**Status:** DRAFT
+**Status:** DRAFT  
+**See also:** [RESILIENCE.md](RESILIENCE.md) — Comprehensive fault handling specification
 
 ---
 
@@ -119,8 +120,13 @@ CREATE TABLE agents (
     entrypoint  TEXT NOT NULL,
     manifest    TEXT NOT NULL,               -- Full YAML (JSON stored)
     status      TEXT NOT NULL DEFAULT 'registered',
-                -- registered | starting | running | stopping | stopped | failed | disabled
+                -- registered | starting | running | stopping | stopped | failed | crashed | disabled
     pid         INTEGER,
+    generation_id INTEGER NOT NULL DEFAULT 1, -- Incremented on each restart (stale result detection)
+    cgroup_path TEXT,                        -- cgroups v2 scope path (Phase 4+)
+    last_exit_code INTEGER,                  -- Exit code from last termination
+    last_exit_signal INTEGER,                -- Signal that killed agent (9=SIGKILL, etc.)
+    oom_killed  INTEGER DEFAULT 0,           -- 1 if last death was OOM
     started_at  TEXT,                        -- ISO-8601
     stopped_at  TEXT,
     failure_count INTEGER DEFAULT 0,
@@ -143,13 +149,20 @@ CREATE TABLE tasks (
     capabilities    TEXT NOT NULL,            -- JSON array
     priority        INTEGER DEFAULT 2,       -- 0=none, 1=urgent, 2=high, 3=medium, 4=low
     status          TEXT NOT NULL DEFAULT 'pending',
-                    -- pending | queued | assigned | running | completed | failed | cancelled
+                    -- pending | queued | assigned | leased | running | completed
+                    -- | failed | cancelled | cancelling | dead_letter
     assigned_agent  TEXT REFERENCES agents(id),
     result          TEXT,                     -- JSON
     error           TEXT,
+    error_class     TEXT,                     -- transient | fatal | budget | timeout | loop
     retry_count     INTEGER DEFAULT 0,
     max_retries     INTEGER DEFAULT 3,
     timeout_ms      INTEGER DEFAULT 300000,  -- 5 min default
+    lease_token     TEXT,                     -- Cryptographic token for lease validation
+    lease_expires_at TEXT,                    -- ISO-8601, NULL if not leased
+    agent_generation INTEGER,                -- generation_id of agent when assigned
+    tokens_consumed INTEGER DEFAULT 0,       -- LLM tokens used (in + out)
+    cost_usd        REAL DEFAULT 0.0,        -- Accumulated cost for this task
     submitted_at    TEXT NOT NULL DEFAULT (datetime('now')),
     started_at      TEXT,
     completed_at    TEXT,
@@ -159,6 +172,8 @@ CREATE TABLE tasks (
 CREATE INDEX idx_tasks_status ON tasks(status);
 CREATE INDEX idx_tasks_priority ON tasks(priority);
 CREATE INDEX idx_tasks_agent ON tasks(assigned_agent);
+CREATE INDEX idx_tasks_lease ON tasks(status, lease_expires_at)
+    WHERE status IN ('leased', 'running');
 ```
 
 ### 2.3 Event Record
@@ -178,7 +193,78 @@ CREATE INDEX idx_events_topic ON events(topic, sequence);
 CREATE INDEX idx_events_source ON events(source);
 ```
 
-### 2.4 Schedule Record
+### 2.4 Dead Letter Queue
+
+```sql
+CREATE TABLE dead_letter_tasks (
+    id              TEXT PRIMARY KEY,
+    original_task_id TEXT NOT NULL REFERENCES tasks(id),
+    agent_id        TEXT REFERENCES agents(id),
+    failure_reason  TEXT NOT NULL,
+    error_class     TEXT NOT NULL,        -- transient | fatal | budget | timeout | loop
+    original_payload TEXT NOT NULL,
+    partial_result  TEXT,
+    retry_count     INTEGER NOT NULL,
+    dead_lettered_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+### 2.5 Agent Incidents (Flight Recorder)
+
+```sql
+CREATE TABLE agent_incidents (
+    id              TEXT PRIMARY KEY,     -- ULID
+    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    incident_type   TEXT NOT NULL,        -- oom | timeout | crash | fd_exhaust
+                                          -- | circuit_open | cost_limit | tool_loop
+                                          -- | context_overflow | network_error
+    severity        TEXT NOT NULL,        -- critical | warning | info
+    exit_code       INTEGER,
+    signal          INTEGER,
+    stderr_tail     TEXT,                 -- Last 4KB of stderr
+    context         TEXT,                 -- JSON: additional diagnostic data
+    resolved_at     TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_incidents_agent ON agent_incidents(agent_id, created_at);
+CREATE INDEX idx_incidents_type ON agent_incidents(incident_type);
+```
+
+### 2.6 Agent Usage Tracking
+
+```sql
+CREATE TABLE agent_usage (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    task_id         TEXT REFERENCES tasks(id),
+    tokens_in       INTEGER NOT NULL DEFAULT 0,
+    tokens_out      INTEGER NOT NULL DEFAULT 0,
+    cost_usd        REAL NOT NULL DEFAULT 0.0,
+    tool_calls      INTEGER NOT NULL DEFAULT 0,
+    recorded_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_usage_agent_time ON agent_usage(agent_id, recorded_at);
+```
+
+### 2.7 Health Tick History
+
+```sql
+CREATE TABLE agent_health_ticks (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    check_type      TEXT NOT NULL,        -- ping | readiness | resource
+    latency_ms      INTEGER NOT NULL,
+    status          TEXT NOT NULL,        -- healthy | degraded | unhealthy | timeout
+    details         TEXT,                 -- JSON: resource snapshot
+    recorded_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_health_cleanup ON agent_health_ticks(recorded_at);
+```
+
+### 2.8 Schedule Record
 
 ```sql
 CREATE TABLE schedules (
@@ -351,51 +437,115 @@ client.run()
 ### 4.2 Wire Protocol (Unix Socket)
 
 ```
-Frame: [4 bytes length][payload JSON]
+Frame: [4 bytes length (big-endian u32)][payload JSON]
+Max frame size: 16 MB (reject with error frame if exceeded)
+Read timeout: 30s per frame
+Write timeout: 10s per frame
 
 → Agent to Daemon:
   { "type": "register", "capabilities": [...] }
-  { "type": "task_result", "task_id": "...", "result": {...} }
+  { "type": "task_result", "task_id": "...", "lease_token": "...", "result": {...} }
+  { "type": "task_progress", "task_id": "...", "tokens_so_far": 450 }
+  { "type": "heartbeat_lease", "task_id": "...", "lease_token": "..." }
+  { "type": "usage_report", "task_id": "...", "tokens_in": 1200, "tokens_out": 800, "cost_usd": 0.05 }
+  { "type": "error", "task_id": "...", "error": "...", "retryable": false, "class": "fatal" }
   { "type": "publish", "topic": "...", "payload": {...} }
-  { "type": "heartbeat" }
+  { "type": "pong" }
 
 ← Daemon to Agent:
-  { "type": "task", "id": "...", "payload": {...} }
+  { "type": "task", "id": "...", "lease_token": "...", "payload": {...} }
+  { "type": "cancel_task", "task_id": "..." }
   { "type": "event", "topic": "...", "payload": {...} }
-  { "type": "health_check" }
-  { "type": "shutdown" }
+  { "type": "ping" }
+  { "type": "shutdown", "grace_period_ms": 5000 }
 ```
 
 ## 5. Error Handling
 
+> **Full fault handling specification:** See [RESILIENCE.md](RESILIENCE.md) for
+> comprehensive coverage of all failure modes including process faults, LLM-specific
+> failures, network issues, and chaos testing strategies.
+
 ### 5.1 Agent Failure Recovery
 
 ```
-Agent crashes → Health Monitor detects (heartbeat timeout)
+Agent crashes → SIGCHLD received → waitpid() reaps zombie
+  → Record exit_code, signal, oom_killed in agents table
+  → Log incident to agent_incidents table
   → Check restart_policy:
-     - "always": restart immediately
+     - "always": restart (with backoff)
      - "on-failure": restart if exit code != 0
      - "never": mark as stopped
+  → Increment generation_id on restart
   → If max_failures exceeded:
      - Mark agent as "failed"
+     - Open circuit breaker (stop routing tasks)
      - Send alert (webhook/email)
-     - Circuit breaker: stop routing tasks
-  → Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
+  → Exponential backoff with jitter: 1s, 2s, 4s, 8s, 16s, 30s (cap), ±25% jitter
+  → Global retry budget: max 100 retries/sec across all agents
+  → Kill entire process group on stop: kill(-pgid, SIGTERM), then SIGKILL after 5s
 ```
 
 ### 5.2 Daemon Crash Recovery
 
 ```
-Daemon starts → Check PID file:
-  → Stale PID? Remove and continue
-  → Active PID? Abort (already running)
-→ Load state from SQLite
-→ Resume agents that were "running":
-  → Check if PID still alive
-  → If alive: re-attach monitoring
-  → If dead: restart per policy
-→ Resume scheduled jobs
-→ Replay undelivered events
+Daemon starts → Acquire PID file flock (LOCK_EX|LOCK_NB):
+  → Lock acquired? Proceed
+  → Lock failed? Abort (another instance running)
+→ SQLite WAL integrity check
+→ Load agents with status IN ('running', 'starting', 'crashed')
+→ For each:
+  → Check if PID alive AND pidfd valid
+  → If alive: re-attach monitoring, verify generation_id
+  → If dead: set status='crashed', evaluate restart_policy
+→ Staggered restart: max 5 concurrent, random jitter, 3s between batches
+→ Reclaim expired task leases (lease_expires_at < now)
+  → If retry_count < max_retries: reset to 'pending'
+  → Else: move to dead_letter_tasks
+→ Resume scheduler (evaluate missed_fire_policy for missed jobs)
+→ Replay undelivered events from sequence gaps
+→ Emit event: daemon.recovered { recovered_agents, reclaimed_tasks }
+```
+
+### 5.3 Error Classification
+
+```
+Retryable (transient):     Network timeout, HTTP 429/500/502/503, SQLITE_BUSY
+Non-retryable (fatal):     HTTP 400/401/403, context overflow, invalid input
+Budget exceeded:           Token limit, cost limit → isolate agent
+Timeout:                   Task lease expired, stream idle timeout
+Loop detected:             Same tool+args called 3+ times → auto-cancel
+```
+
+### 5.4 LLM-Specific Failure Handling
+
+```
+Mid-stream disconnect:
+  → Detect via stream_idle_timeout (30s no new tokens)
+  → Cancel agent's upstream HTTP request via CancellationToken
+  → Record partial result + tokens consumed
+  → Evaluate retry based on error class
+
+Cost runaway:
+  → Agent reports usage via usage_report frame
+  → Daemon tracks rolling 1h + 24h windows
+  → 80% of budget: warn via alert
+  → 100% of budget: isolate agent, reject all new tasks
+
+Hallucination/tool loop:
+  → Track tool call chain depth + identical call detection
+  → max_tool_calls_per_task exceeded → TOOL_LOOP_DETECTED → dead-letter
+```
+
+### 5.5 Disk & Storage Fault Handling
+
+```
+Disk space < 10%: aggressive data retention cleanup
+Disk space < 5%:  stop accepting new tasks, force WAL checkpoint, alert
+Disk space < 2%:  read-only mode, refuse all writes, critical alert
+
+SQLite WAL > 100MB: force checkpoint, alert
+SQLite BUSY timeout: 5s retry, then propagate error to caller
 ```
 
 ## 6. Security Model

@@ -1,0 +1,38 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Data (runtime)
+*.db
+*.db-wal
+*.db-shm
+*.pid
+*.sock
+
+# Logs
+*.log
+logs/
+
+# Coverage
+tarpaulin-report.html
+lcov.info
+coverage/
+
+# Fuzz
+fuzz/artifacts/
+fuzz/corpus/

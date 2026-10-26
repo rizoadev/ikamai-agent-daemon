@@ -1,0 +1,16 @@
+[package]
+name = "iad-storage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "IKAMAI Agent Daemon — storage layer"
+
+[dependencies]
+iad-core = { path = "../iad-core" }
+rusqlite.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+thiserror.workspace = true

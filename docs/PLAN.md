@@ -1,0 +1,211 @@
+# Master Plan
+
+**Product:** IKAMAI Agent Daemon (IAD)  
+**Version:** 0.1.0  
+**Date:** 2026-10-26  
+**Author:** Rizoa  
+**Status:** ACTIVE
+
+---
+
+## 1. Phase Overview
+
+```
+Phase 0: Foundation         [Month 1]      ███░░░░░░░  
+Phase 1: Core Daemon        [Month 1-2]    █████░░░░░  
+Phase 2: Task & Events      [Month 2-3]    ███████░░░  
+Phase 3: API & Monitoring   [Month 3-5]    ████████░░  
+Phase 4: Scale & Plugins    [Month 5-7]    █████████░  
+Phase 5: Production         [Month 7-9]    ██████████  
+Phase 6: Ecosystem          [Month 9+]     ██████████+
+```
+
+## 2. Phase Details
+
+### Phase 0: Foundation (Month 1, Week 1-2)
+
+**Goal:** Project scaffolding, CI/CD, documentation foundation.
+
+| # | Task | Estimate | Status |
+|---|------|----------|--------|
+| 0.1 | Create GitHub repo + branch protection | 1h | ⬜ |
+| 0.2 | Scaffold Rust workspace (cargo init) | 2h | ⬜ |
+| 0.3 | Setup CI/CD (GitHub Actions: fmt, clippy, test) | 3h | ⬜ |
+| 0.4 | Write WHITEPAPER, PRD, SPEC, PLAN docs | 8h | ✅ |
+| 0.5 | Setup Linear project + import tasks | 2h | ⬜ |
+| 0.6 | Define Cargo workspace structure | 2h | ⬜ |
+| 0.7 | Setup pre-commit hooks (fmt, clippy) | 1h | ⬜ |
+| 0.8 | Create initial README with badges | 1h | ⬜ |
+
+**Deliverable:** Empty but fully-tooled project, all docs, CI green.
+
+### Phase 1: Core Daemon (Month 1-2, Week 2-6)
+
+**Goal:** A daemon that starts, manages agent processes, and stays running.
+
+| # | Task | Estimate | Depends On |
+|---|------|----------|------------|
+| 1.1 | Daemon process (daemonize, PID file, signal handling) | 8h | 0.6 |
+| 1.2 | Configuration loading (TOML parser + env vars) | 4h | 0.6 |
+| 1.3 | SQLite storage layer (migrations, connection pool) | 6h | 0.6 |
+| 1.4 | Agent manifest parser (YAML → struct) | 4h | 1.2 |
+| 1.5 | Agent registry (register, deregister, list) | 6h | 1.3, 1.4 |
+| 1.6 | Process manager (spawn, kill, signal) | 8h | 1.1 |
+| 1.7 | Agent lifecycle (start → running → stop) | 8h | 1.5, 1.6 |
+| 1.8 | Health monitor (heartbeat, failure detection) | 6h | 1.7 |
+| 1.9 | Auto-restart with backoff | 4h | 1.8 |
+| 1.10 | Structured logging (tracing crate) | 4h | 1.1 |
+| 1.11 | CLI: `iad init/start/stop/status` | 6h | 1.1, 1.2 |
+| 1.12 | CLI: `iad agent add/remove/list/start/stop/logs` | 8h | 1.5, 1.7 |
+| 1.13 | Unit tests for all Phase 1 modules | 8h | 1.1-1.12 |
+| 1.14 | Integration test: full agent lifecycle | 4h | 1.13 |
+
+**Deliverable:** `iad start`, register agents, auto-restart on failure. → **v0.1.0-alpha.1**
+
+### Phase 2: Task Routing & Event Bus (Month 2-3, Week 6-10)
+
+**Goal:** Agents can receive tasks and communicate via events.
+
+| # | Task | Estimate | Depends On |
+|---|------|----------|------------|
+| 2.1 | Agent-daemon IPC protocol (Unix socket) | 8h | 1.7 |
+| 2.2 | Agent SDK wire protocol (length-prefixed JSON) | 6h | 2.1 |
+| 2.3 | Task model + storage | 4h | 1.3 |
+| 2.4 | Task submission + queue | 4h | 2.3 |
+| 2.5 | Capability-based task routing | 6h | 2.4, 1.5 |
+| 2.6 | Task lifecycle (pending → assigned → running → done) | 6h | 2.5 |
+| 2.7 | Task retry + timeout + cancellation | 6h | 2.6 |
+| 2.8 | Event bus: publish/subscribe | 8h | 2.1 |
+| 2.9 | Event persistence + replay | 4h | 2.8, 1.3 |
+| 2.10 | Scheduler: cron + one-shot | 6h | 2.4, 1.3 |
+| 2.11 | CLI: `iad task submit/list/status/cancel` | 4h | 2.4-2.7 |
+| 2.12 | CLI: `iad schedule add/list/remove/trigger` | 4h | 2.10 |
+| 2.13 | Python SDK (basic) | 8h | 2.2 |
+| 2.14 | Tests for Phase 2 | 8h | all |
+
+**Deliverable:** Tasks route to agents, events flow, scheduler works. → **v0.2.0-alpha.2**
+
+### Phase 3: API & Monitoring (Month 3-5, Week 10-18)
+
+**Goal:** REST API, WebSocket, metrics, alerting.
+
+| # | Task | Estimate | Depends On |
+|---|------|----------|------------|
+| 3.1 | REST API server (Axum) | 8h | 1.1 |
+| 3.2 | Agent API endpoints | 6h | 3.1, 1.5 |
+| 3.3 | Task API endpoints | 6h | 3.1, 2.4 |
+| 3.4 | Schedule API endpoints | 4h | 3.1, 2.10 |
+| 3.5 | Event API endpoints | 4h | 3.1, 2.8 |
+| 3.6 | System API endpoints (health, status, reload) | 4h | 3.1 |
+| 3.7 | API authentication (bearer token) | 4h | 3.1 |
+| 3.8 | WebSocket server (real-time events) | 8h | 3.1, 2.8 |
+| 3.9 | Prometheus metrics endpoint | 6h | 3.1 |
+| 3.10 | Alert webhooks (agent failure, task failure) | 4h | 1.8 |
+| 3.11 | Hot-reload configuration | 4h | 1.2 |
+| 3.12 | API documentation (OpenAPI spec) | 4h | 3.2-3.6 |
+| 3.13 | Node.js SDK (basic) | 6h | 2.2 |
+| 3.14 | Tests for Phase 3 | 8h | all |
+| 3.15 | Load testing (k6) | 4h | 3.1 |
+
+**Deliverable:** Full REST API, WebSocket, metrics. → **v0.3.0-beta.1**
+
+### Phase 4: Scale & Plugins (Month 5-7, Week 18-26)
+
+**Goal:** Multi-node, gRPC, WASM plugins, production hardening.
+
+| # | Task | Estimate | Depends On |
+|---|------|----------|------------|
+| 4.1 | gRPC server (tonic) | 8h | 1.1 |
+| 4.2 | gRPC proto definitions | 4h | 4.1 |
+| 4.3 | Inter-daemon communication (gRPC) | 8h | 4.1, 4.2 |
+| 4.4 | Node discovery + registration | 6h | 4.3 |
+| 4.5 | Cross-node task routing | 8h | 4.4, 2.5 |
+| 4.6 | Cross-node event propagation | 6h | 4.4, 2.8 |
+| 4.7 | PostgreSQL storage backend | 8h | 1.3 |
+| 4.8 | WASM plugin runtime (wasmtime) | 12h | 1.7 |
+| 4.9 | WASM agent sandboxing | 8h | 4.8 |
+| 4.10 | mTLS for gRPC | 4h | 4.1 |
+| 4.11 | RBAC for API | 6h | 3.7 |
+| 4.12 | Secret management (encrypted vault) | 6h | 1.2 |
+| 4.13 | Resource limits (cgroups v2) | 6h | 1.6 |
+| 4.14 | Tests for Phase 4 | 12h | all |
+
+**Deliverable:** Multi-node fleet, WASM plugins. → **v0.5.0-beta.2**
+
+### Phase 5: Production (Month 7-9, Week 26-34)
+
+**Goal:** Production-ready, documented, benchmarked, audited.
+
+| # | Task | Estimate | Depends On |
+|---|------|----------|------------|
+| 5.1 | Comprehensive documentation | 16h | all |
+| 5.2 | Quick-start guide | 4h | 5.1 |
+| 5.3 | Agent development guide | 8h | 5.1 |
+| 5.4 | Deployment guide (systemd, Docker) | 4h | 5.1 |
+| 5.5 | Performance benchmarks | 8h | all |
+| 5.6 | Security audit | 12h | all |
+| 5.7 | Fuzz testing | 8h | all |
+| 5.8 | Docker image + Compose | 4h | all |
+| 5.9 | systemd unit file | 2h | all |
+| 5.10 | Example agents (3-5) | 8h | 2.13 |
+| 5.11 | Logo + branding | 4h | — |
+| 5.12 | Website / landing page | 8h | 5.11 |
+| 5.13 | Release v1.0.0 | 4h | all |
+
+**Deliverable:** Production-ready release. → **v1.0.0**
+
+### Phase 6: Ecosystem (Month 9+)
+
+**Goal:** Community, integrations, enterprise features.
+
+| # | Task | Priority |
+|---|------|----------|
+| 6.1 | Web dashboard UI | P1 |
+| 6.2 | Agent marketplace | P2 |
+| 6.3 | Terraform provider | P2 |
+| 6.4 | VS Code extension | P3 |
+| 6.5 | Slack/Discord integration | P2 |
+| 6.6 | SSO (SAML/OIDC) | P2 |
+| 6.7 | Multi-tenancy | P3 |
+| 6.8 | Distributed tracing UI | P2 |
+| 6.9 | Agent template library | P1 |
+| 6.10 | Mobile monitoring app | P3 |
+
+**Deliverable:** Growing ecosystem. → **v1.x, v2.0**
+
+## 3. Resource Allocation
+
+| Role | Allocation | Person |
+|------|-----------|--------|
+| Lead / Architect | 60% | Rizoa |
+| Rust Development | 80% | Rizoa + contributors |
+| SDK Development | 20% | Rizoa |
+| Testing & QA | 15% | Rizoa + CI |
+| Documentation | 15% | Rizoa |
+| DevOps / CI | 10% | Rizoa |
+
+## 4. Total Effort Estimate
+
+| Phase | Hours | Weeks |
+|-------|-------|-------|
+| Phase 0 | 20h | 2 |
+| Phase 1 | 80h | 4 |
+| Phase 2 | 82h | 4 |
+| Phase 3 | 80h | 8 |
+| Phase 4 | 94h | 8 |
+| Phase 5 | 90h | 8 |
+| **Total** | **446h** | **34 weeks** |
+
+## 5. Decision Log
+
+| # | Date | Decision | Rationale |
+|---|------|----------|-----------|
+| D1 | 2026-10-26 | Use Rust for daemon | Performance + safety critical for daemon |
+| D2 | 2026-10-26 | SQLite first, Postgres later | Simplify MVP, scale when needed |
+| D3 | 2026-10-26 | Unix sockets for local IPC | Zero-copy, lowest latency |
+| D4 | 2026-10-26 | WASM for plugin agents | Sandboxed, portable, polyglot |
+| D5 | 2026-10-26 | Axum for REST, tonic for gRPC | Same Tokio ecosystem, composable |
+
+---
+
+*Plan maintained by Rizoa. Updated at each phase gate.*

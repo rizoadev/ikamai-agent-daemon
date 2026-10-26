@@ -52,6 +52,66 @@ pub enum AgentFrame {
     },
     /// Agent capabilities advertisement.
     Capabilities { caps: Vec<String> },
+
+    // ─── Real-time Streaming Frames (Phase 3.10) ───────────────────────
+
+    /// Agent started thinking / reasoning.
+    ThinkingStart {
+        task_id:       String,
+        content_index: u32,
+    },
+    /// Incremental thinking text delta.
+    ThinkingDelta {
+        task_id:       String,
+        content_index: u32,
+        delta:         String,
+    },
+    /// Agent finished thinking.
+    ThinkingEnd {
+        task_id:       String,
+        content_index: u32,
+        duration_ms:   u64,
+    },
+    /// Agent started a tool call.
+    ToolCallStart {
+        task_id:     String,
+        tool_call_id: String,
+        tool_name:   String,
+        args:        serde_json::Value,
+    },
+    /// Tool execution progress update.
+    ToolCallUpdate {
+        task_id:     String,
+        tool_call_id: String,
+        output_delta: String,
+    },
+    /// Tool call finished.
+    ToolCallEnd {
+        task_id:      String,
+        tool_call_id: String,
+        result:       serde_json::Value,
+        success:      bool,
+        duration_ms:  u64,
+    },
+    /// Streaming text response delta.
+    TextDelta {
+        task_id:       String,
+        content_index: u32,
+        delta:         String,
+    },
+    /// Task progress percentage / step update.
+    TaskProgress {
+        task_id:  String,
+        step:     String,
+        progress: f32,
+        detail:   Option<String>,
+    },
+    /// Agent resource metrics snapshot.
+    ResourceMetrics {
+        cpu_pct:      f32,
+        mem_bytes:    u64,
+        active_tasks: u32,
+    },
 }
 
 /// Error classification (plan D10).

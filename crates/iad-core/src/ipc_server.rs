@@ -2,6 +2,7 @@
 
 use crate::{
     ipc::{read_frame, write_frame, AgentFrame, DaemonFrame},
+    monitor::Monitor,
     registry::AgentRegistry,
     AgentStatus, Result,
 };
@@ -38,6 +39,7 @@ pub struct IpcContext {
     pub registry:   Arc<AgentRegistry>,
     pub result_tx:  ResultTx,
     pub metrics_tx: mpsc::Sender<IpcMetricEvent>,
+    pub monitor:    Option<Arc<Monitor>>,
 }
 
 /// Metric events emitted by IPC server.
@@ -171,6 +173,11 @@ async fn handle_agent_conn(
 
     conns.register(&agent_name, tx).await;
 
+    // Notify monitor
+    if let Some(ref mon) = ctx.monitor {
+        mon.agent_connected(&agent_name).await;
+    }
+
     // Mark agent running in registry
     let _ = ctx.registry.update(&agent_name, |a| {
         a.status = AgentStatus::Running;
@@ -203,6 +210,9 @@ async fn handle_agent_conn(
             AgentFrame::TaskComplete { task_id, result } => {
                 info!(agent = agent_name, task_id, "task completed");
                 let _ = ctx.metrics_tx.send(IpcMetricEvent::TaskCompleted).await;
+                if let Some(ref mon) = ctx.monitor {
+                    mon.task_completed(&agent_name, &task_id).await;
+                }
                 let _ = ctx.result_tx.send(TaskResult {
                     task_id:      task_id.clone(),
                     agent_name:   agent_name.clone(),
@@ -217,6 +227,9 @@ async fn handle_agent_conn(
             AgentFrame::TaskFailed { task_id, error, .. } => {
                 warn!(agent = agent_name, task_id, error, "task failed");
                 let _ = ctx.metrics_tx.send(IpcMetricEvent::TaskFailed).await;
+                if let Some(ref mon) = ctx.monitor {
+                    mon.task_failed(&agent_name, &task_id).await;
+                }
                 let _ = ctx.result_tx.send(TaskResult {
                     task_id:      task_id.clone(),
                     agent_name:   agent_name.clone(),
@@ -235,12 +248,63 @@ async fn handle_agent_conn(
                 info!(agent = agent_name, task_id, tokens_in, tokens_out, cost_usd, "usage");
             }
 
+            // ─── Streaming monitor frames ────────────────────────────────────
+
+            AgentFrame::ThinkingStart { task_id, content_index } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.thinking_start(&agent_name, &task_id, content_index).await;
+                }
+            }
+            AgentFrame::ThinkingDelta { task_id, delta, .. } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.thinking_delta(&agent_name, &task_id, &delta).await;
+                }
+            }
+            AgentFrame::ThinkingEnd { task_id, duration_ms, .. } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.thinking_end(&agent_name, &task_id, duration_ms).await;
+                }
+            }
+            AgentFrame::ToolCallStart { task_id, tool_call_id, tool_name, ref args } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.tool_call_start(&agent_name, &task_id, &tool_call_id, &tool_name, args).await;
+                }
+            }
+            AgentFrame::ToolCallUpdate { task_id, output_delta, .. } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.tool_call_update(&agent_name, &task_id, &output_delta).await;
+                }
+            }
+            AgentFrame::ToolCallEnd { task_id, success, duration_ms, .. } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.tool_call_end(&agent_name, &task_id, success, duration_ms).await;
+                }
+            }
+            AgentFrame::TextDelta { task_id, delta, .. } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.text_delta(&agent_name, &task_id, &delta).await;
+                }
+            }
+            AgentFrame::TaskProgress { task_id, step, progress, .. } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.task_progress(&agent_name, &task_id, &step, progress).await;
+                }
+            }
+            AgentFrame::ResourceMetrics { cpu_pct, mem_bytes, .. } => {
+                if let Some(ref mon) = ctx.monitor {
+                    mon.resource_metrics(&agent_name, cpu_pct, mem_bytes).await;
+                }
+            }
+
             AgentFrame::Capabilities { .. } => {}
         }
     }
 
     // Cleanup
     conns.unregister(&agent_name).await;
+    if let Some(ref mon) = ctx.monitor {
+        mon.agent_disconnected(&agent_name).await;
+    }
     let _ = ctx.registry.update(&agent_name, |a| {
         a.status     = AgentStatus::Stopped;
         a.pid        = None;

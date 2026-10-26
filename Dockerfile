@@ -1,44 +1,36 @@
-FROM rust:1.80-slim AS builder
+# ── Build stage ───────────────────────────────────────────────────────────
+FROM rust:1.80-slim-bookworm AS builder
 
-WORKDIR /usr/src/iad
+RUN apt-get update && apt-get install -y \
+    pkg-config libssl-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# Cache dependencies
+WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
-COPY crates/iad/Cargo.toml crates/iad/Cargo.toml
-COPY crates/iad-core/Cargo.toml crates/iad-core/Cargo.toml
-COPY crates/iad-storage/Cargo.toml crates/iad-storage/Cargo.toml
-COPY crates/iad-api/Cargo.toml crates/iad-api/Cargo.toml
-COPY crates/iad-sdk/Cargo.toml crates/iad-sdk/Cargo.toml
-
-# Create dummy source files for dependency caching
-RUN mkdir -p crates/iad/src crates/iad-core/src crates/iad-storage/src crates/iad-api/src crates/iad-sdk/src && \
-    echo 'fn main() {}' > crates/iad/src/main.rs && \
-    echo 'pub fn lib() {}' > crates/iad-core/src/lib.rs && \
-    echo 'pub fn lib() {}' > crates/iad-storage/src/lib.rs && \
-    echo 'pub fn lib() {}' > crates/iad-api/src/lib.rs && \
-    echo 'pub fn lib() {}' > crates/iad-sdk/src/lib.rs && \
-    cargo build --release 2>/dev/null || true
-
-# Copy real source
 COPY crates/ crates/
 
-# Build
-RUN cargo build --release
+RUN cargo build --release --workspace --exclude iad-grpc --exclude iad-wasm
 
-# Runtime
+# ── Runtime stage ──────────────────────────────────────────────────────────
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -r -s /bin/false -d /home/iad iad && \
+    mkdir -p /home/iad/.iad && chown -R iad:iad /home/iad
 
-COPY --from=builder /usr/src/iad/target/release/iad /usr/local/bin/iad
+COPY --from=builder /build/target/release/iad /usr/local/bin/iad
 
-RUN useradd --create-home --shell /bin/bash iad
 USER iad
 WORKDIR /home/iad
 
-EXPOSE 7700 7701 7702
+RUN iad init
+
+EXPOSE 7700
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s \
+    CMD curl -f http://127.0.0.1:7700/healthz || exit 1
 
 ENTRYPOINT ["iad"]
 CMD ["start", "--foreground"]

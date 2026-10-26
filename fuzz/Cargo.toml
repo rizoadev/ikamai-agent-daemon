@@ -1,0 +1,31 @@
+[package]
+name = "iad-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+iad-core    = { path = "../crates/iad-core" }
+iad-storage = { path = "../crates/iad-storage" }
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "fuzz_ipc_frame"
+path = "fuzz_targets/fuzz_ipc_frame.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_manifest_parse"
+path = "fuzz_targets/fuzz_manifest_parse.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_config_parse"
+path = "fuzz_targets/fuzz_config_parse.rs"
+test = false
+doc = false

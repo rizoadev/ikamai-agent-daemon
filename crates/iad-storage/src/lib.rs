@@ -302,8 +302,70 @@ CREATE TABLE IF NOT EXISTS events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_topic ON events(topic, sequence);
+
+CREATE TABLE IF NOT EXISTS agent_usage (
+    id          TEXT PRIMARY KEY,
+    task_id     TEXT NOT NULL,
+    agent_name  TEXT NOT NULL,
+    tokens_in   INTEGER NOT NULL DEFAULT 0,
+    tokens_out  INTEGER NOT NULL DEFAULT 0,
+    cost_usd    REAL NOT NULL DEFAULT 0.0,
+    recorded_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_agent ON agent_usage(agent_name, recorded_at DESC);
+
 "#;
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 #[cfg(test)]
 mod tests;
+
+// ─── Usage Tracking ──────────────────────────────────────────────────────────
+
+pub struct UsageRecord {
+    pub id:          String,
+    pub task_id:     String,
+    pub agent_name:  String,
+    pub tokens_in:   u64,
+    pub tokens_out:  u64,
+    pub cost_usd:    f64,
+    pub recorded_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl Storage {
+    pub fn insert_usage(&self, rec: &UsageRecord) -> Result<()> {
+        let conn = self.lock()?;
+        conn.execute(
+            "INSERT OR IGNORE INTO agent_usage
+             (id, task_id, agent_name, tokens_in, tokens_out, cost_usd, recorded_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            rusqlite::params![
+                rec.id, rec.task_id, rec.agent_name,
+                rec.tokens_in as i64, rec.tokens_out as i64,
+                rec.cost_usd, rec.recorded_at.to_rfc3339(),
+            ],
+        ).map_err(|e| Error::Storage(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn usage_summary(&self, agent_name: Option<&str>) -> Result<(u64, u64, f64)> {
+        let conn = self.lock()?;
+        let (ti, to, cost): (i64, i64, f64) = if let Some(name) = agent_name {
+            conn.query_row(
+                "SELECT COALESCE(SUM(tokens_in),0), COALESCE(SUM(tokens_out),0), COALESCE(SUM(cost_usd),0.0)
+                 FROM agent_usage WHERE agent_name = ?1",
+                rusqlite::params![name],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            ).map_err(|e| Error::Storage(e.to_string()))?
+        } else {
+            conn.query_row(
+                "SELECT COALESCE(SUM(tokens_in),0), COALESCE(SUM(tokens_out),0), COALESCE(SUM(cost_usd),0.0)
+                 FROM agent_usage",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            ).map_err(|e| Error::Storage(e.to_string()))?
+        };
+        Ok((ti as u64, to as u64, cost))
+    }
+}

@@ -184,3 +184,14 @@ pub struct AgentIncident {
     pub reason:       String,
     pub occurred_at:  DateTime<Utc>,
 }
+
+impl Default for AgentManifest {
+    fn default() -> Self {
+        Self {
+            name: "unknown".into(), version: "0.0.0".into(),
+            runtime: "bash".into(), entrypoint: "".into(),
+            args: vec![], capabilities: vec![], env: Default::default(),
+            restart: RestartPolicy::OnFailure, max_restarts: 5,
+        }
+    }
+}

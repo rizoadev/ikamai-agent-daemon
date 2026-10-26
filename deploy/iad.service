@@ -1,0 +1,27 @@
+[Unit]
+Description=IKAMAI Agent Daemon
+Documentation=https://github.com/rizoadev/ikamai-agent-daemon
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iad
+Group=iad
+Environment=HOME=/var/lib/iad
+ExecStartPre=/usr/local/bin/iad init
+ExecStart=/usr/local/bin/iad start --foreground
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/usr/local/bin/iad stop
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/iad
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

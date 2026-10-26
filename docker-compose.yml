@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  iad:
+    build: .
+    image: ikamai/iad:latest
+    container_name: iad
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    volumes:
+      - iad-data:/home/iad/.iad
+    environment:
+      - IAD_LOG_LEVEL=info
+      - IAD_API_TOKEN=${IAD_API_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Optional: Prometheus + Grafana for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    profiles: [monitoring]
+
+volumes:
+  iad-data:

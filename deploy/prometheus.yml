@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: iad
+    static_configs:
+      - targets: ['iad:7700']
+    metrics_path: /metrics

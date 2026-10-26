@@ -1,0 +1,10 @@
+name: "timer-agent"
+version: "1.0.0"
+runtime: "bash"
+entrypoint: "/bin/bash"
+args: ["-c", "echo started; while true; do echo heartbeat $(date); sleep 60; done"]
+capabilities:
+  - "timer"
+  - "heartbeat"
+restart: "always"
+max_restarts: 0

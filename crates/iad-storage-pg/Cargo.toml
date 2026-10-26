@@ -1,0 +1,20 @@
+[package]
+name = "iad-storage-pg"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "IKAMAI Agent Daemon — PostgreSQL storage backend (Phase 4)"
+
+[dependencies]
+iad-core    = { path = "../iad-core" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+ulid.workspace = true
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "chrono", "uuid", "json"] }

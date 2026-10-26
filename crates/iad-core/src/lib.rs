@@ -20,6 +20,8 @@ pub use models::{
     Event, Priority, Task, TaskStatus,
 };
 pub use registry::AgentRegistry;
+pub mod cross_node;
+pub mod node_discovery;
 
 // Test modules (only compiled in test builds)
 #[cfg(test)]
@@ -32,3 +34,14 @@ mod pid_test;
 mod process_test;
 #[cfg(test)]
 mod registry_test;
+#[cfg(test)]
+mod task_queue_test;
+#[cfg(test)]
+mod event_bus_test;
+#[cfg(test)]
+mod scheduler_test;
+
+pub mod rbac;
+pub mod secret;
+pub mod cgroups;
+pub mod tls;

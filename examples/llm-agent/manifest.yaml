@@ -1,0 +1,14 @@
+name: "llm-agent"
+version: "1.0.0"
+runtime: "python"
+entrypoint: "python3"
+args: ["agent.py"]
+capabilities:
+  - "text-generation"
+  - "summarize"
+  - "code-review"
+env:
+  OPENAI_API_KEY: "${secret:OPENAI_KEY}"
+  MODEL: "gpt-4o-mini"
+restart: "on_failure"
+max_restarts: 3

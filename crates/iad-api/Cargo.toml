@@ -6,13 +6,13 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "IKAMAI Agent Daemon — REST API server"
+description = "IKAMAI Agent Daemon — REST API server (Phase 3)"
 
 [dependencies]
 iad-core    = { path = "../iad-core" }
 iad-storage = { path = "../iad-storage" }
 tokio.workspace = true
-axum.workspace = true
+axum        = { version = "0.7", features = ["ws"] }
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
@@ -21,3 +21,6 @@ chrono.workspace = true
 ulid.workspace = true
 libc.workspace = true
 tower-http.workspace = true
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

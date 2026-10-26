@@ -6,6 +6,8 @@ members = [
     "crates/iad-storage",
     "crates/iad-api",
     "crates/iad-sdk",
+    "crates/iad-grpc",
+    "crates/iad-wasm",
 ]
 
 [workspace.package]

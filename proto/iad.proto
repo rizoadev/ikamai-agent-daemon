@@ -1,0 +1,83 @@
+syntax = "proto3";
+package iad.v1;
+
+message Empty {}
+
+message AgentState {
+  enum Value {
+    UNKNOWN    = 0; REGISTERED = 1; STARTING = 2; RUNNING = 3;
+    STOPPING   = 4; STOPPED    = 5; FAILED   = 6; CRASHED = 7; DISABLED = 8;
+  }
+}
+
+message Agent {
+  string id             = 1;
+  string name           = 2;
+  string version        = 3;
+  AgentState.Value status = 4;
+  optional uint32 pid   = 5;
+  uint64 generation_id  = 6;
+  uint32 failure_count  = 7;
+  repeated string capabilities = 8;
+  string created_at     = 9;
+}
+
+message RegisterAgentRequest {
+  string name           = 1; string version = 2; string runtime = 3;
+  string entrypoint     = 4; repeated string args = 5;
+  repeated string capabilities = 6; map<string, string> env = 7;
+  string restart        = 8; uint32 max_restarts = 9;
+}
+
+message AgentRef           { string name = 1; }
+message ListAgentsRequest  { bool include_stopped = 1; }
+message ListAgentsResponse { repeated Agent agents = 1; }
+
+message SubmitTaskRequest  {
+  bytes payload = 1; repeated string capabilities = 2;
+  uint32 priority = 3; uint32 max_retries = 4;
+}
+message SubmitTaskResponse { string task_id = 1; string status = 2; }
+message TaskRef            { string id = 1; }
+message ListTasksRequest   { string status_filter = 1; }
+message Task {
+  string id = 1; optional string title = 2; bytes payload = 3;
+  repeated string capabilities = 4; uint32 priority = 5;
+  string status = 6; uint32 retry_count = 7; string created_at = 8;
+}
+message ListTasksResponse  { repeated Task tasks = 1; }
+
+message Event {
+  string id = 1; string topic = 2; string event_type = 3;
+  bytes payload = 4; string source = 5; uint64 sequence = 6; string created_at = 7;
+}
+message SubscribeRequest { repeated string topics = 1; }
+
+message DaemonStatusResponse {
+  string version = 1; uint32 agents = 2; uint32 tasks = 3; string uptime = 4;
+}
+
+service AgentService {
+  rpc RegisterAgent   (RegisterAgentRequest) returns (Agent);
+  rpc DeregisterAgent (AgentRef)             returns (Empty);
+  rpc GetAgent        (AgentRef)             returns (Agent);
+  rpc ListAgents      (ListAgentsRequest)    returns (ListAgentsResponse);
+  rpc StartAgent      (AgentRef)             returns (Agent);
+  rpc StopAgent       (AgentRef)             returns (Agent);
+}
+
+service TaskService {
+  rpc SubmitTask (SubmitTaskRequest) returns (SubmitTaskResponse);
+  rpc GetTask    (TaskRef)           returns (Task);
+  rpc ListTasks  (ListTasksRequest)  returns (ListTasksResponse);
+  rpc CancelTask (TaskRef)           returns (Empty);
+}
+
+service EventService {
+  rpc Subscribe (SubscribeRequest) returns (stream Event);
+}
+
+service DaemonService {
+  rpc Status (Empty) returns (DaemonStatusResponse);
+  rpc Reload (Empty) returns (Empty);
+}

@@ -1,0 +1,224 @@
+openapi: "3.1.0"
+info:
+  title: IKAMAI Agent Daemon API
+  version: "0.1.0"
+  description: REST API for IKAMAI Agent Daemon (IAD).
+  license:
+    name: MIT
+
+servers:
+  - url: http://127.0.0.1:7700
+    description: Local daemon
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Agent:
+      type: object
+      properties:
+        id:            { type: string }
+        name:          { type: string }
+        version:       { type: string }
+        status:        { type: string, enum: [registered, starting, running, stopping, stopped, failed, crashed, disabled] }
+        pid:           { type: integer, nullable: true }
+        generation_id: { type: integer }
+        failure_count: { type: integer }
+        capabilities:  { type: array, items: { type: string } }
+    AgentManifest:
+      type: object
+      required: [name, version, runtime, entrypoint]
+      properties:
+        name:         { type: string }
+        version:      { type: string }
+        runtime:      { type: string }
+        entrypoint:   { type: string }
+        capabilities: { type: array, items: { type: string } }
+        restart:      { type: string, default: on_failure }
+        max_restarts: { type: integer, default: 5 }
+    Task:
+      type: object
+      properties:
+        id:           { type: string }
+        payload:      { type: object }
+        capabilities: { type: array, items: { type: string } }
+        priority:     { type: integer }
+        status:       { type: string }
+        retry_count:  { type: integer }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    Ok:
+      type: object
+      properties:
+        ok:      { type: boolean }
+        message: { type: string, nullable: true }
+
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Alive
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      security: []
+      responses:
+        "200":
+          description: Prometheus text format
+          content:
+            text/plain:
+              schema: { type: string }
+  /api/v1/status:
+    get:
+      summary: Daemon status
+      responses:
+        "200":
+          description: Status JSON
+  /api/v1/agents:
+    get:
+      summary: List agents
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { "$ref": "#/components/schemas/Agent" }
+    post:
+      summary: Register agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                manifest: { "$ref": "#/components/schemas/AgentManifest" }
+      responses:
+        "201":
+          description: Created
+        "409":
+          description: Conflict
+  /api/v1/agents/{name}:
+    parameters:
+      - in: path
+        name: name
+        required: true
+        schema: { type: string }
+    get:
+      summary: Get agent
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { "$ref": "#/components/schemas/Agent" }
+        "404":
+          description: Not found
+    delete:
+      summary: Remove agent
+      responses:
+        "200":
+          description: Removed
+  /api/v1/agents/{name}/start:
+    parameters:
+      - in: path
+        name: name
+        required: true
+        schema: { type: string }
+    post:
+      summary: Start agent
+      responses:
+        "200":
+          description: Queued
+  /api/v1/agents/{name}/stop:
+    parameters:
+      - in: path
+        name: name
+        required: true
+        schema: { type: string }
+    post:
+      summary: Stop agent
+      responses:
+        "200":
+          description: Queued
+  /api/v1/agents/{name}/logs:
+    parameters:
+      - in: path
+        name: name
+        required: true
+        schema: { type: string }
+    get:
+      summary: Agent incident logs
+      responses:
+        "200":
+          description: Incidents list
+  /api/v1/tasks:
+    get:
+      summary: List tasks
+      responses:
+        "200":
+          description: Task list
+    post:
+      summary: Submit task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payload, capabilities]
+              properties:
+                payload:      { type: object }
+                capabilities: { type: array, items: { type: string } }
+                priority:     { type: integer, default: 3 }
+                max_retries:  { type: integer, default: 3 }
+      responses:
+        "200":
+          description: Task submitted
+  /api/v1/tasks/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      summary: Get task
+      responses:
+        "200":
+          description: Task
+        "404":
+          description: Not found
+    delete:
+      summary: Cancel task
+      responses:
+        "200":
+          description: Cancelled
+  /api/v1/tasks/dead-letter:
+    get:
+      summary: Dead-letter queue
+      responses:
+        "200":
+          description: DLQ list
+  /api/v1/ws:
+    get:
+      summary: WebSocket event stream
+      parameters:
+        - in: query
+          name: topics
+          schema: { type: string }
+        - in: query
+          name: token
+          schema: { type: string }
+      responses:
+        "101":
+          description: Upgrade

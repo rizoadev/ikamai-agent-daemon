@@ -7,6 +7,7 @@ use clap::{Parser, Subcommand};
 use iad_core::{
     config::{DaemonConfig, DEFAULT_CONFIG_TOML},
     event_bus::EventBus,
+    ipc_server::{ConnectionRegistry, IpcContext, IpcMetricEvent, make_result_channel, start_ipc_server},
     pid::{acquire_pid_file, pid_alive, read_pid, remove_pid_file},
     process::{ProcessEvent, ProcessManager},
     registry::AgentRegistry,
@@ -194,6 +195,44 @@ async fn cmd_start(cfg: &DaemonConfig, foreground: bool) -> anyhow::Result<()> {
         }
     }
 
+    // IPC Unix socket server — agents connect here.
+    let socket_path   = expand_tilde(&cfg.daemon.socket);
+    let conn_registry = ConnectionRegistry::new();
+    let (result_tx, _result_rx) = make_result_channel();
+    let (metric_tx, mut metric_rx) = tokio::sync::mpsc::channel::<IpcMetricEvent>(256);
+    let shared_metrics   = iad_api::metrics::Metrics::new();
+    let shared_event_bus = EventBus::new();
+
+    // Metric event consumer — updates counters from IPC events
+    {
+        let m = shared_metrics.clone();
+        tokio::spawn(async move {
+            while let Some(ev) = metric_rx.recv().await {
+                match ev {
+                    IpcMetricEvent::TaskCompleted           => m.inc_tasks_completed(),
+                    IpcMetricEvent::TaskFailed              => m.inc_tasks_failed(),
+                    IpcMetricEvent::AgentConnected(_)       => m.inc_agents_registered(),
+                    IpcMetricEvent::AgentDisconnected(_)    => {},
+                }
+            }
+        });
+    }
+
+    {
+        let ctx  = IpcContext {
+            registry:   registry.clone(),
+            result_tx:  result_tx.clone(),
+            metrics_tx: metric_tx,
+        };
+        let sock = socket_path.clone();
+        let cr   = conn_registry.clone();
+        tokio::spawn(async move {
+            if let Err(e) = start_ipc_server(&sock, ctx, cr).await {
+                tracing::error!("IPC server error: {e}");
+            }
+        });
+    }
+
     // Health monitor.
     let health = Arc::new(iad_core::health::HealthMonitor::new(
         registry.clone(),
@@ -212,13 +251,14 @@ async fn cmd_start(cfg: &DaemonConfig, foreground: bool) -> anyhow::Result<()> {
             .or_else(|| std::env::var("IAD_TOKEN").ok());
 
         let app_state = AppState {
-            storage:   storage.clone(),
-            registry:  registry.clone(),
-            cfg:       cfg.clone(),
+            storage:       storage.clone(),
+            registry:      registry.clone(),
+            cfg:           cfg.clone(),
             api_token,
-            metrics:   Metrics::new(),
-            event_bus: EventBus::new(),
-            alert_mgr: None,
+            metrics:       shared_metrics.clone(),
+            event_bus:     shared_event_bus.clone(),
+            alert_mgr:     None,
+            conn_registry: Some(conn_registry.clone()),
         };
 
         let router = iad_api::build_router(app_state);

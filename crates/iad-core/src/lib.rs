@@ -45,3 +45,4 @@ pub mod rbac;
 pub mod secret;
 pub mod cgroups;
 pub mod tls;
+pub mod ipc_server;

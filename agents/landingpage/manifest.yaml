@@ -1,0 +1,12 @@
+name: "landingpage-agent"
+version: "1.0.0"
+runtime: "python"
+entrypoint: "python3"
+args:
+  - "/home/rizoa/BUSINESS/IKAMAI/ikamai-agent-daemon/agents/landingpage/agent.py"
+capabilities:
+  - "landingpage"
+  - "html-generation"
+  - "web-build"
+restart: "on_failure"
+max_restarts: 3
